@@ -10,6 +10,7 @@ const AdminPanel = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [teams, setTeams] = useState([]);
   const [players, setPlayers] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [homeTeam, setHomeTeam] = useState('');
   const [awayTeam, setAwayTeam] = useState('');
   const [homeScore, setHomeScore] = useState('');
@@ -17,11 +18,17 @@ const AdminPanel = () => {
   const [matchHistory, setMatchHistory] = useState([]);
   const [newHomeTeam, setNewHomeTeam] = useState('');
   const [newAwayTeam, setNewAwayTeam] = useState('');
+  const [homeTeamSearch, setHomeTeamSearch] = useState('');
+  const [awayTeamSearch, setAwayTeamSearch] = useState('');
+  const [showHomeCountries, setShowHomeCountries] = useState(false);
+  const [showAwayCountries, setShowAwayCountries] = useState(false);
   const [homeTeamMode, setHomeTeamMode] = useState('existing');
   const [awayTeamMode, setAwayTeamMode] = useState('existing');
+  const [selectedHomePlayers, setSelectedHomePlayers] = useState([]);
+  const [selectedAwayPlayers, setSelectedAwayPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('matches'); // 'matches' or 'players'
+  const [activeTab, setActiveTab] = useState('matches');
   const [newPlayerName, setNewPlayerName] = useState('');
 
   useEffect(() => {
@@ -30,6 +37,7 @@ const AdminPanel = () => {
       setIsAuthenticated(true);
       loadTeams();
       loadPlayers();
+      loadCountries();
     } else {
       setLoading(false);
     }
@@ -41,6 +49,7 @@ const AdminPanel = () => {
       sessionStorage.setItem('adminAuthenticated', 'true');
       loadTeams();
       loadPlayers();
+      loadCountries();
     } else {
       alert('Incorrect password. Please try again.');
       setPasswordInput('');
@@ -74,7 +83,8 @@ const AdminPanel = () => {
         drawn: team.drawn || 0,
         lost: team.lost || 0,
         goalsFor: team.goals_for || 0,
-        goalsAgainst: team.goals_against || 0
+        goalsAgainst: team.goals_against || 0,
+        playerIds: team.player_ids || []
       })));
     } catch (error) {
       console.error('Error loading teams:', error);
@@ -99,6 +109,56 @@ const AdminPanel = () => {
     } catch (error) {
       console.error('Error loading players:', error);
     }
+  };
+
+  const loadCountries = async () => {
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/country_names?select=*&excluded=eq.false&order=name_finnish.asc`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to load countries');
+
+      const data = await response.json();
+      setCountries(data);
+    } catch (error) {
+      console.error('Error loading countries:', error);
+    }
+  };
+
+  const getAvailableCountries = () => {
+    return countries.filter(c => !c.used && !c.excluded);
+  };
+
+  const getFilteredHomeCountries = () => {
+    const available = getAvailableCountries();
+    if (!homeTeamSearch) return available;
+    return available.filter(c => 
+      c.name_finnish.toLowerCase().includes(homeTeamSearch.toLowerCase())
+    );
+  };
+
+  const getFilteredAwayCountries = () => {
+    const available = getAvailableCountries();
+    if (!awayTeamSearch) return available;
+    return available.filter(c => 
+      c.name_finnish.toLowerCase().includes(awayTeamSearch.toLowerCase())
+    );
+  };
+
+  const selectHomeCountry = (countryName) => {
+    setNewHomeTeam(countryName);
+    setHomeTeamSearch(countryName);
+    setShowHomeCountries(false);
+  };
+
+  const selectAwayCountry = (countryName) => {
+    setNewAwayTeam(countryName);
+    setAwayTeamSearch(countryName);
+    setShowAwayCountries(false);
   };
 
   const addPlayer = async () => {
@@ -192,6 +252,24 @@ const AdminPanel = () => {
     }
   };
 
+  const handlePlayerSelection = (playerId, isHome) => {
+    const selectedList = isHome ? selectedHomePlayers : selectedAwayPlayers;
+    const setSelected = isHome ? setSelectedHomePlayers : setSelectedAwayPlayers;
+
+    if (selectedList.includes(playerId)) {
+      setSelected(selectedList.filter(id => id !== playerId));
+    } else if (selectedList.length < 3) {
+      setSelected([...selectedList, playerId]);
+    } else {
+      alert('You can only select 3 players per team');
+    }
+  };
+
+  const getPlayerName = (playerId) => {
+    const player = players.find(p => p.id === playerId);
+    return player ? player.name : 'Unknown';
+  };
+
   const calculateGoalDifference = (team) => {
     return team.goalsFor - team.goalsAgainst;
   };
@@ -206,15 +284,58 @@ const AdminPanel = () => {
     return team.drawn / team.played;
   };
 
+  const markCountryAsUsed = async (countryName) => {
+    try {
+      const country = countries.find(c => c.name_finnish === countryName);
+      if (!country) return;
+
+      await fetch(`${supabaseUrl}/rest/v1/country_names?id=eq.${country.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          used: true
+        })
+      });
+
+      await loadCountries();
+    } catch (error) {
+      console.error('Error marking country as used:', error);
+    }
+  };
+
   const addMatchResult = async () => {
     let finalHomeTeam = '';
     let finalAwayTeam = '';
+    let homeTeamData = null;
+    let awayTeamData = null;
 
     if (homeTeamMode === 'new') {
       if (!newHomeTeam.trim()) {
         alert('Please enter a home team name');
         return;
       }
+      if (selectedHomePlayers.length !== 3) {
+        alert('Please select exactly 3 players for the home team');
+        return;
+      }
+      
+      const sortedHomePlayers = [...selectedHomePlayers].sort();
+      const existingTeamWithSamePlayers = teams.find(team => {
+        if (!team.playerIds || team.playerIds.length !== 3) return false;
+        const sortedTeamPlayers = [...team.playerIds].sort();
+        return sortedTeamPlayers.every((id, idx) => id === sortedHomePlayers[idx]);
+      });
+      
+      if (existingTeamWithSamePlayers) {
+        const playerNames = selectedHomePlayers.map(id => getPlayerName(id)).join(', ');
+        alert(`These players (${playerNames}) already form a team called "${existingTeamWithSamePlayers.name}". Please select different players or use the existing team.`);
+        return;
+      }
+      
       finalHomeTeam = newHomeTeam.trim();
     } else {
       if (!homeTeam) {
@@ -222,6 +343,7 @@ const AdminPanel = () => {
         return;
       }
       finalHomeTeam = homeTeam;
+      homeTeamData = teams.find(t => t.name === finalHomeTeam);
     }
 
     if (awayTeamMode === 'new') {
@@ -229,6 +351,24 @@ const AdminPanel = () => {
         alert('Please enter an away team name');
         return;
       }
+      if (selectedAwayPlayers.length !== 3) {
+        alert('Please select exactly 3 players for the away team');
+        return;
+      }
+      
+      const sortedAwayPlayers = [...selectedAwayPlayers].sort();
+      const existingTeamWithSamePlayers = teams.find(team => {
+        if (!team.playerIds || team.playerIds.length !== 3) return false;
+        const sortedTeamPlayers = [...team.playerIds].sort();
+        return sortedTeamPlayers.every((id, idx) => id === sortedAwayPlayers[idx]);
+      });
+      
+      if (existingTeamWithSamePlayers) {
+        const playerNames = selectedAwayPlayers.map(id => getPlayerName(id)).join(', ');
+        alert(`These players (${playerNames}) already form a team called "${existingTeamWithSamePlayers.name}". Please select different players or use the existing team.`);
+        return;
+      }
+      
       finalAwayTeam = newAwayTeam.trim();
     } else {
       if (!awayTeam) {
@@ -236,6 +376,7 @@ const AdminPanel = () => {
         return;
       }
       finalAwayTeam = awayTeam;
+      awayTeamData = teams.find(t => t.name === finalAwayTeam);
     }
 
     if (homeScore === '' || awayScore === '') {
@@ -254,8 +395,6 @@ const AdminPanel = () => {
     try {
       setSaving(true);
 
-      let homeTeamData = teams.find(t => t.name === finalHomeTeam);
-      
       if (!homeTeamData) {
         const response = await fetch(`${supabaseUrl}/rest/v1/teams`, {
           method: 'POST',
@@ -272,7 +411,8 @@ const AdminPanel = () => {
             drawn: 0,
             lost: 0,
             goals_for: 0,
-            goals_against: 0
+            goals_against: 0,
+            player_ids: selectedHomePlayers
           })
         });
 
@@ -290,12 +430,28 @@ const AdminPanel = () => {
           drawn: 0,
           lost: 0,
           goalsFor: 0,
-          goalsAgainst: 0
+          goalsAgainst: 0,
+          playerIds: selectedHomePlayers
         };
+
+        for (const playerId of selectedHomePlayers) {
+          await fetch(`${supabaseUrl}/rest/v1/team_players`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              team_id: homeTeamData.id,
+              player_id: playerId
+            })
+          });
+        }
+
+        await markCountryAsUsed(finalHomeTeam);
       }
 
-      let awayTeamData = teams.find(t => t.name === finalAwayTeam);
-      
       if (!awayTeamData) {
         const response = await fetch(`${supabaseUrl}/rest/v1/teams`, {
           method: 'POST',
@@ -312,7 +468,8 @@ const AdminPanel = () => {
             drawn: 0,
             lost: 0,
             goals_for: 0,
-            goals_against: 0
+            goals_against: 0,
+            player_ids: selectedAwayPlayers
           })
         });
 
@@ -330,8 +487,26 @@ const AdminPanel = () => {
           drawn: 0,
           lost: 0,
           goalsFor: 0,
-          goalsAgainst: 0
+          goalsAgainst: 0,
+          playerIds: selectedAwayPlayers
         };
+
+        for (const playerId of selectedAwayPlayers) {
+          await fetch(`${supabaseUrl}/rest/v1/team_players`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              team_id: awayTeamData.id,
+              player_id: playerId
+            })
+          });
+        }
+
+        await markCountryAsUsed(finalAwayTeam);
       }
 
       const homeIsWin = homeGoals > awayGoals;
@@ -389,6 +564,10 @@ const AdminPanel = () => {
       setAwayScore('');
       setNewHomeTeam('');
       setNewAwayTeam('');
+      setHomeTeamSearch('');
+      setAwayTeamSearch('');
+      setSelectedHomePlayers([]);
+      setSelectedAwayPlayers([]);
       setHomeTeamMode('existing');
       setAwayTeamMode('existing');
 
@@ -429,6 +608,15 @@ const AdminPanel = () => {
 
     try {
       setSaving(true);
+      
+      await fetch(`${supabaseUrl}/rest/v1/team_players?team_id=neq.0`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+
       const response = await fetch(`${supabaseUrl}/rest/v1/teams?id=neq.0`, {
         method: 'DELETE',
         headers: {
@@ -439,8 +627,21 @@ const AdminPanel = () => {
 
       if (!response.ok) throw new Error('Failed to reset league');
 
+      await fetch(`${supabaseUrl}/rest/v1/country_names?used=eq.true`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          used: false
+        })
+      });
+
       setTeams([]);
       setMatchHistory([]);
+      await loadCountries();
       
       alert('League reset successfully!');
     } catch (error) {
@@ -517,7 +718,6 @@ const AdminPanel = () => {
           <p className="text-gray-600">Manage teams, players, and match results</p>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex gap-4 mb-6 justify-center">
           <button
             onClick={() => setActiveTab('matches')}
@@ -531,9 +731,14 @@ const AdminPanel = () => {
           >
             Player Pool ({activePlayers.length})
           </button>
+          <button
+            onClick={() => setActiveTab('countries')}
+            className={'px-6 py-3 rounded-lg font-bold transition-colors ' + (activeTab === 'countries' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
+          >
+            Countries ({getAvailableCountries().length} available)
+          </button>
         </div>
 
-        {/* Matches Tab */}
         {activeTab === 'matches' && (
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
@@ -545,14 +750,24 @@ const AdminPanel = () => {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Home Team</label>
                     <div className="flex gap-2 mb-2">
                       <button
-                        onClick={() => setHomeTeamMode('existing')}
+                        onClick={() => {
+                          setHomeTeamMode('existing');
+                          setSelectedHomePlayers([]);
+                          setHomeTeamSearch('');
+                          setNewHomeTeam('');
+                        }}
                         disabled={saving}
                         className={'flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-colors ' + (homeTeamMode === 'existing' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300') + (saving ? ' opacity-50 cursor-not-allowed' : '')}
                       >
                         Existing
                       </button>
                       <button
-                        onClick={() => setHomeTeamMode('new')}
+                        onClick={() => {
+                          setHomeTeamMode('new');
+                          setSelectedHomePlayers([]);
+                          setHomeTeamSearch('');
+                          setNewHomeTeam('');
+                        }}
                         disabled={saving}
                         className={'flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-colors ' + (homeTeamMode === 'new' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300') + (saving ? ' opacity-50 cursor-not-allowed' : '')}
                       >
@@ -575,14 +790,66 @@ const AdminPanel = () => {
                         ))}
                       </select>
                     ) : (
-                      <input
-                        type="text"
-                        value={newHomeTeam}
-                        onChange={(e) => setNewHomeTeam(e.target.value)}
-                        placeholder="Enter new team name"
-                        disabled={saving}
-                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none disabled:opacity-50"
-                      />
+                      <>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={homeTeamSearch}
+                            onChange={(e) => {
+                              setHomeTeamSearch(e.target.value);
+                              setNewHomeTeam('');
+                              setShowHomeCountries(true);
+                            }}
+                            onFocus={() => setShowHomeCountries(true)}
+                            placeholder="Type country name..."
+                            disabled={saving}
+                            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none disabled:opacity-50 mb-1"
+                          />
+                          {newHomeTeam && (
+                            <div className="text-xs text-green-600 font-semibold mb-2">
+                              Selected: {newHomeTeam}
+                            </div>
+                          )}
+                          {showHomeCountries && homeTeamSearch && (
+                            <div className="absolute z-10 w-full bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {getFilteredHomeCountries().length === 0 ? (
+                                <div className="p-3 text-gray-500 text-sm">No countries found</div>
+                              ) : (
+                                getFilteredHomeCountries().map(country => (
+                                  <button
+                                    key={country.id}
+                                    onClick={() => selectHomeCountry(country.name_finnish)}
+                                    className="w-full text-left px-3 py-2 hover:bg-green-100 border-b border-gray-100 text-sm"
+                                  >
+                                    {country.name_finnish}
+                                    <span className="text-xs text-gray-500 ml-2">({country.name_english})</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {newHomeTeam && (
+                          <div className="bg-blue-50 p-3 rounded-lg">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">
+                              Select 3 players ({selectedHomePlayers.length}/3):
+                            </p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {activePlayers.map(player => (
+                                <button
+                                  key={player.id}
+                                  onClick={() => handlePlayerSelection(player.id, true)}
+                                  disabled={saving}
+                                  className={'w-full text-left px-3 py-2 rounded text-sm transition-colors ' + (selectedHomePlayers.includes(player.id) ? 'bg-green-500 text-white font-semibold' : 'bg-white hover:bg-gray-100 text-gray-700')}
+                                >
+                                  {player.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -617,14 +884,24 @@ const AdminPanel = () => {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Away Team</label>
                     <div className="flex gap-2 mb-2">
                       <button
-                        onClick={() => setAwayTeamMode('existing')}
+                        onClick={() => {
+                          setAwayTeamMode('existing');
+                          setSelectedAwayPlayers([]);
+                          setAwayTeamSearch('');
+                          setNewAwayTeam('');
+                        }}
                         disabled={saving}
                         className={'flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-colors ' + (awayTeamMode === 'existing' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300') + (saving ? ' opacity-50 cursor-not-allowed' : '')}
                       >
                         Existing
                       </button>
                       <button
-                        onClick={() => setAwayTeamMode('new')}
+                        onClick={() => {
+                          setAwayTeamMode('new');
+                          setSelectedAwayPlayers([]);
+                          setAwayTeamSearch('');
+                          setNewAwayTeam('');
+                        }}
                         disabled={saving}
                         className={'flex-1 py-2 px-3 rounded-lg font-semibold text-sm transition-colors ' + (awayTeamMode === 'new' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300') + (saving ? ' opacity-50 cursor-not-allowed' : '')}
                       >
@@ -647,14 +924,66 @@ const AdminPanel = () => {
                         ))}
                       </select>
                     ) : (
-                      <input
-                        type="text"
-                        value={newAwayTeam}
-                        onChange={(e) => setNewAwayTeam(e.target.value)}
-                        placeholder="Enter new team name"
-                        disabled={saving}
-                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none disabled:opacity-50"
-                      />
+                      <>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={awayTeamSearch}
+                            onChange={(e) => {
+                              setAwayTeamSearch(e.target.value);
+                              setNewAwayTeam('');
+                              setShowAwayCountries(true);
+                            }}
+                            onFocus={() => setShowAwayCountries(true)}
+                            placeholder="Type country name..."
+                            disabled={saving}
+                            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none disabled:opacity-50 mb-1"
+                          />
+                          {newAwayTeam && (
+                            <div className="text-xs text-green-600 font-semibold mb-2">
+                              Selected: {newAwayTeam}
+                            </div>
+                          )}
+                          {showAwayCountries && awayTeamSearch && (
+                            <div className="absolute z-10 w-full bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {getFilteredAwayCountries().length === 0 ? (
+                                <div className="p-3 text-gray-500 text-sm">No countries found</div>
+                              ) : (
+                                getFilteredAwayCountries().map(country => (
+                                  <button
+                                    key={country.id}
+                                    onClick={() => selectAwayCountry(country.name_finnish)}
+                                    className="w-full text-left px-3 py-2 hover:bg-green-100 border-b border-gray-100 text-sm"
+                                  >
+                                    {country.name_finnish}
+                                    <span className="text-xs text-gray-500 ml-2">({country.name_english})</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {newAwayTeam && (
+                          <div className="bg-blue-50 p-3 rounded-lg">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">
+                              Select 3 players ({selectedAwayPlayers.length}/3):
+                            </p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {activePlayers.map(player => (
+                                <button
+                                  key={player.id}
+                                  onClick={() => handlePlayerSelection(player.id, false)}
+                                  disabled={saving}
+                                  className={'w-full text-left px-3 py-2 rounded text-sm transition-colors ' + (selectedAwayPlayers.includes(player.id) ? 'bg-green-500 text-white font-semibold' : 'bg-white hover:bg-gray-100 text-gray-700')}
+                                >
+                                  {player.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -717,6 +1046,7 @@ const AdminPanel = () => {
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Pos</th>
                             <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Team</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Players</th>
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">P</th>
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">W</th>
                             <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">W%</th>
@@ -739,6 +1069,11 @@ const AdminPanel = () => {
                               <tr key={team.id} className={positionColor + ' hover:bg-gray-50'}>
                                 <td className="px-4 py-3 text-center font-bold text-gray-700">{index + 1}</td>
                                 <td className="px-4 py-3 font-semibold text-gray-900">{team.name}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {team.playerIds && team.playerIds.length > 0
+                                    ? team.playerIds.map(id => getPlayerName(id)).join(', ')
+                                    : 'No players assigned'}
+                                </td>
                                 <td className="px-4 py-3 text-center text-gray-700">{team.played}</td>
                                 <td className="px-4 py-3 text-center text-gray-700">{team.won}</td>
                                 <td className="px-4 py-3 text-center text-gray-700">
@@ -788,7 +1123,6 @@ const AdminPanel = () => {
           </div>
         )}
 
-        {/* Players Tab */}
         {activeTab === 'players' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -882,6 +1216,78 @@ const AdminPanel = () => {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'countries' && (
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Country Management</h2>
+              
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-bold text-green-700">{getAvailableCountries().length}</p>
+                  <p className="text-sm text-gray-600">Available</p>
+                </div>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-bold text-blue-700">{countries.filter(c => c.used).length}</p>
+                  <p className="text-sm text-gray-600">Used as Teams</p>
+                </div>
+                <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 text-center">
+                  <p className="text-3xl font-bold text-red-700">{countries.filter(c => c.excluded).length}</p>
+                  <p className="text-sm text-gray-600">Excluded</p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Click on any country to toggle its excluded status. Excluded countries cannot be used as team names.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                  {countries.map(country => (
+                    <button
+                      key={country.id}
+                      onClick={async () => {
+                        if (country.used) {
+                          alert('This country is already used as a team name and cannot be excluded.');
+                          return;
+                        }
+                        try {
+                          setSaving(true);
+                          await fetch(`${supabaseUrl}/rest/v1/country_names?id=eq.${country.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                              'apikey': supabaseKey,
+                              'Authorization': `Bearer ${supabaseKey}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              excluded: !country.excluded
+                            })
+                          });
+                          await loadCountries();
+                        } catch (error) {
+                          console.error('Error updating country:', error);
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving || country.used}
+                      className={'p-3 rounded-lg text-left text-sm transition-colors ' + 
+                        (country.used ? 'bg-blue-100 border-2 border-blue-300 text-blue-800 cursor-not-allowed' : 
+                        country.excluded ? 'bg-red-100 border-2 border-red-300 text-red-800 hover:bg-red-200' : 
+                        'bg-green-50 border-2 border-green-200 text-gray-800 hover:bg-green-100')}
+                    >
+                      <div className="font-semibold">{country.name_finnish}</div>
+                      <div className="text-xs text-gray-600">{country.name_english}</div>
+                      {country.used && <div className="text-xs font-semibold text-blue-600 mt-1">Used as team</div>}
+                      {country.excluded && <div className="text-xs font-semibold text-red-600 mt-1">Excluded</div>}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

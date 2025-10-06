@@ -5,7 +5,7 @@ const AdminPanel = () => {
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRycmt6cXRxa3ppcnRxb2tqeHh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NTc5MzksImV4cCI6MjA3NTMzMzkzOX0.HavYuWTY8kY3ErmKTuyZk93N241II5GP0LDnlG2smGA';
 
   // CHANGE THIS PASSWORD TO YOUR OWN!
-  const ADMIN_PASSWORD = 'leagueadmin2025';
+  const ADMIN_PASSWORD = 'GloriaPatri_Tuplamestari_2024-2025';
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');

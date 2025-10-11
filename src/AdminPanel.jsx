@@ -30,6 +30,9 @@ const AdminPanel = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('matches');
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [showGoalScorers, setShowGoalScorers] = useState(false);
+  const [homeGoalScorers, setHomeGoalScorers] = useState({});
+  const [awayGoalScorers, setAwayGoalScorers] = useState({});
 
   useEffect(() => {
     const authStatus = sessionStorage.getItem('adminAuthenticated');
@@ -164,6 +167,16 @@ const AdminPanel = () => {
   const addPlayer = async () => {
     if (!newPlayerName.trim()) {
       alert('Please enter a player name');
+      return;
+    }
+
+    // Check for duplicate player name (case-insensitive)
+    const duplicatePlayer = players.find(
+      p => p.name.toLowerCase() === newPlayerName.trim().toLowerCase()
+    );
+    
+    if (duplicatePlayer) {
+      alert(`This player already exists: "${duplicatePlayer.name}"`);
       return;
     }
 
@@ -392,6 +405,28 @@ const AdminPanel = () => {
     const homeGoals = parseInt(homeScore);
     const awayGoals = parseInt(awayScore);
 
+    if (!showGoalScorers) {
+      if (homeGoals > 0 || awayGoals > 0) {
+        setShowGoalScorers(true);
+        setHomeGoalScorers({});
+        setAwayGoalScorers({});
+        return;
+      }
+    }
+
+    const totalHomeGoalsAssigned = Object.values(homeGoalScorers).reduce((sum, goals) => sum + goals, 0);
+    const totalAwayGoalsAssigned = Object.values(awayGoalScorers).reduce((sum, goals) => sum + goals, 0);
+
+    if (totalHomeGoalsAssigned !== homeGoals) {
+      alert(`Please assign all ${homeGoals} home team goals to players. Currently assigned: ${totalHomeGoalsAssigned}`);
+      return;
+    }
+
+    if (totalAwayGoalsAssigned !== awayGoals) {
+      alert(`Please assign all ${awayGoals} away team goals to players. Currently assigned: ${totalAwayGoalsAssigned}`);
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -412,7 +447,7 @@ const AdminPanel = () => {
             lost: 0,
             goals_for: 0,
             goals_against: 0,
-            player_ids: selectedHomePlayers
+            player_ids: '{' + selectedHomePlayers.join(',') + '}'
           })
         });
 
@@ -469,7 +504,7 @@ const AdminPanel = () => {
             lost: 0,
             goals_for: 0,
             goals_against: 0,
-            player_ids: selectedAwayPlayers
+            player_ids: '{' + selectedAwayPlayers.join(',') + '}'
           })
         });
 

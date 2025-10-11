@@ -4,6 +4,7 @@ import MatchEntryForm from './components/MatchEntryForm';
 import LeagueTable from './components/LeagueTable';
 import PlayerManagement from './components/PlayerManagement';
 import CountryManagement from './components/CountryManagement';
+import TopScorers from './components/TopScorers';
 import { 
   loadTeams, 
   loadPlayers, 
@@ -521,7 +522,14 @@ const AdminPanel = () => {
             </div>
 
             <div className="lg:col-span-2">
-              <LeagueTable teams={teams} players={players} showPlayers={true} />
+              <div className="space-y-6">
+                <LeagueTable teams={teams} players={players} showPlayers={true} />
+                <TopScorers 
+                  players={players} 
+                  supabaseUrl={supabaseUrl} 
+                  supabaseKey={supabaseKey} 
+                />
+              </div>
             </div>
           </div>
         )}

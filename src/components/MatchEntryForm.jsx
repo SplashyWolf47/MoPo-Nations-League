@@ -581,7 +581,7 @@ const MatchEntryForm = ({
         </button>
       </div>
     );
-  }
+  };
 };
 
 export default MatchEntryForm;

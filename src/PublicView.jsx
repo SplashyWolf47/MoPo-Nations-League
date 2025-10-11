@@ -13,7 +13,7 @@ const PublicView = () => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 3600000); // Refresh every 60 minutes
+    const interval = setInterval(loadData, 3600000);
     return () => clearInterval(interval);
   }, []);
 
@@ -46,22 +46,18 @@ const PublicView = () => {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-gray-800 mb-2">Football League Standings</h1>
-          <p className="text-gray-600 text-lg">Live league table</p>
+          <h1 className="text-5xl font-bold text-gray-800 mb-2">Mopo Kansojen Liiga</h1>
+          <p className="text-gray-600 text-lg">Live league standings</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div>
-            <LeagueTable teams={teams} players={players} showPlayers={false} />
-          </div>
+        <div className="space-y-6">
+          <LeagueTable teams={teams} players={players} showPlayers={false} />
           
-          <div>
-            <TopScorers 
-              players={players} 
-              supabaseUrl={supabaseUrl} 
-              supabaseKey={supabaseKey} 
-            />
-          </div>
+          <TopScorers 
+            players={players} 
+            supabaseUrl={supabaseUrl} 
+            supabaseKey={supabaseKey} 
+          />
         </div>
       </div>
     </div>

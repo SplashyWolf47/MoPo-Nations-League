@@ -51,7 +51,7 @@ const PublicView = () => {
         </div>
 
         <div className="space-y-6">
-          <LeagueTable teams={teams} players={players} showPlayers={false} />
+          <LeagueTable teams={teams} players={players} showPlayers={true} />
           
           <TopScorers 
             players={players} 

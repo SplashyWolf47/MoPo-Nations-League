@@ -580,8 +580,8 @@ const MatchEntryForm = ({
           {parseInt(homeScore) === 0 && parseInt(awayScore) === 0 ? 'Save Match (0-0)' : 'Next: Assign Goal Scorers →'}
         </button>
       </div>
-    );
-  }
+    </div>
+  );
 };
 
 export default MatchEntryForm;

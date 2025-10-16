@@ -8,7 +8,7 @@ const TopScorers = ({ players, supabaseUrl, supabaseKey }) => {
     loadPlayerStats();
   }, []);
 
-  const loadPlayerStats = async () => {
+const loadPlayerStats = async () => {
     try {
       setLoading(true);
       
@@ -23,22 +23,56 @@ const TopScorers = ({ players, supabaseUrl, supabaseKey }) => {
       if (!goalsResponse.ok) throw new Error('Failed to load goals');
       const goalsData = await goalsResponse.json();
 
-      // Calculate stats per player
+      // Get all team_players relationships
+      const teamPlayersResponse = await fetch(`${supabaseUrl}/rest/v1/team_players?select=player_id,team_id`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+
+      if (!teamPlayersResponse.ok) throw new Error('Failed to load team players');
+      const teamPlayersData = await teamPlayersResponse.json();
+
+      // Get all matches
+      const matchesResponse = await fetch(`${supabaseUrl}/rest/v1/matches?select=id,home_team_id,away_team_id`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      });
+
+      if (!matchesResponse.ok) throw new Error('Failed to load matches');
+      const matchesData = await matchesResponse.json();
+
+      // Build player stats
       const statsMap = {};
       const matchesPerPlayer = {};
 
+      // Initialize all players who are on teams
+      teamPlayersData.forEach(tp => {
+        if (!statsMap[tp.player_id]) {
+          statsMap[tp.player_id] = 0;
+          matchesPerPlayer[tp.player_id] = new Set();
+        }
+      });
+
+      // Count matches for each player (based on their team's participation)
+      matchesData.forEach(match => {
+        teamPlayersData.forEach(tp => {
+          if (tp.team_id === match.home_team_id || tp.team_id === match.away_team_id) {
+            if (matchesPerPlayer[tp.player_id]) {
+              matchesPerPlayer[tp.player_id].add(match.id);
+            }
+          }
+        });
+      });
+
+      // Add goals scored
       goalsData.forEach(goal => {
-        const playerId = goal.player_id;
-        
-        if (!statsMap[playerId]) {
-          statsMap[playerId] = 0;
+        if (statsMap[goal.player_id] !== undefined) {
+          statsMap[goal.player_id] += goal.goals_scored;
         }
-        if (!matchesPerPlayer[playerId]) {
-          matchesPerPlayer[playerId] = new Set();
-        }
-        
-        statsMap[playerId] += goal.goals_scored;
-        matchesPerPlayer[playerId].add(goal.match_id);
       });
 
       // Convert to array and add player names
@@ -48,17 +82,18 @@ const TopScorers = ({ players, supabaseUrl, supabaseKey }) => {
           playerId: parseInt(playerId),
           playerName: player ? player.name : 'Unknown',
           goals: statsMap[playerId],
-          matches: matchesPerPlayer[playerId].size
+          matches: matchesPerPlayer[playerId] ? matchesPerPlayer[playerId].size : 0
         };
       });
 
-      // Sort by goals (desc), then matches (asc)
-      stats.sort((a, b) => {
+      // Filter out players with 0 matches and sort
+      const filteredStats = stats.filter(s => s.matches > 0);
+      filteredStats.sort((a, b) => {
         if (b.goals !== a.goals) return b.goals - a.goals;
         return a.matches - b.matches;
       });
 
-      setPlayerStats(stats);
+      setPlayerStats(filteredStats);
     } catch (error) {
       console.error('Error loading player stats:', error);
     } finally {

@@ -297,7 +297,6 @@ const AdminPanel = () => {
             });
           }
         }
-
         for (const [playerId, goals] of Object.entries(matchData.awayGoalScorers)) {
           if (goals > 0) {
             await createMatchGoal({
@@ -307,6 +306,25 @@ const AdminPanel = () => {
               goals_scored: goals
             });
           }
+        }
+
+        // Save own goals (player_id = null for own goals)
+        if (matchData.homeOwnGoals > 0) {
+          await createMatchGoal({
+            match_id: matchId,
+            team_id: homeTeamData.id,
+            player_id: null,
+            goals_scored: matchData.homeOwnGoals
+          });
+        }
+
+        if (matchData.awayOwnGoals > 0) {
+          await createMatchGoal({
+            match_id: matchId,
+            team_id: awayTeamData.id,
+            player_id: null,
+            goals_scored: matchData.awayOwnGoals
+          });
         }
       }
 

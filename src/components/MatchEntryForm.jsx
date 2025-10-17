@@ -206,6 +206,7 @@ const MatchEntryForm = ({
       awayTeam: finalAwayTeam,
       homeScore: homeGoals,
       awayScore: awayGoals,
+      round: parseInt(round),
       homeTeamMode,
       awayTeamMode,
       selectedHomePlayers,
@@ -229,6 +230,7 @@ const MatchEntryForm = ({
     setMatchStep(1);
     setHomeGoalScorers({});
     setAwayGoalScorers({});
+    setRound('1');
   };
 
   const goBack = () => {

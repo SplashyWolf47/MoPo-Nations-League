@@ -28,7 +28,7 @@ const MatchEntryForm = ({
   const [homeGoalScorers, setHomeGoalScorers] = useState({});
   const [awayGoalScorers, setAwayGoalScorers] = useState({});
   const [round, setRound] = useState('1');
-    const [homeOwnGoals, setHomeOwnGoals] = useState(0);
+  const [homeOwnGoals, setHomeOwnGoals] = useState(0);
   const [awayOwnGoals, setAwayOwnGoals] = useState(0);
   
   const activePlayers = players.filter(p => p.active);
@@ -258,8 +258,8 @@ if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
   if (matchStep === 2) {
     const homeGoals = parseInt(homeScore);
     const awayGoals = parseInt(awayScore);
-    const totalHomeAssigned = Object.values(homeGoalScorers).reduce((sum, g) => sum + g, 0);
-    const totalAwayAssigned = Object.values(awayGoalScorers).reduce((sum, g) => sum + g, 0);
+    const totalHomeAssigned = Object.values(homeGoalScorers).reduce((sum, g) => sum + g, 0) + homeOwnGoals;
+    const totalAwayAssigned = Object.values(awayGoalScorers).reduce((sum, g) => sum + g, 0) + awayOwnGoals;
 
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">

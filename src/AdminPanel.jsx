@@ -280,6 +280,7 @@ const AdminPanel = () => {
         away_team_id: awayTeamData.id,
         home_score: matchData.homeScore,
         away_score: matchData.awayScore
+        round: matchData.round
       });
 
       const matchId = matchRecord[0].id;

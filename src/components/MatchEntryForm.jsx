@@ -211,6 +211,8 @@ if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
       homeScore: homeGoals,
       awayScore: awayGoals,
       round: parseInt(round),
+      homeOwnGoals: homeOwnGoals,
+      awayOwnGoals: awayOwnGoals,      
       homeTeamMode,
       awayTeamMode,
       selectedHomePlayers,
@@ -237,10 +239,13 @@ if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
     setRound('1');
   };
 
-  const goBack = () => {
+  //This looks like the cleanup, resetting everything
+  const goBack = () => { 
     setMatchStep(1);
     setHomeGoalScorers({});
     setAwayGoalScorers({});
+    setHomeOwnGoals(0);
+    setAwayOwnGoals(0);
   };
 
   const finalHomeTeam = homeTeamMode === 'new' ? newHomeTeam : homeTeam;

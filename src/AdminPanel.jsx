@@ -5,6 +5,7 @@ import LeagueTable from './components/LeagueTable';
 import PlayerManagement from './components/PlayerManagement';
 import CountryManagement from './components/CountryManagement';
 import TopScorers from './components/TopScorers';
+import MatchHistory from './components/MatchHistory';
 import { 
   loadTeams, 
   loadPlayers, 
@@ -476,6 +477,12 @@ const AdminPanel = () => {
           >
             Countries ({countries.filter(c => !c.used && !c.excluded).length} available)
           </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={'px-6 py-3 rounded-lg font-bold transition-colors ' + (activeTab === 'history' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
+          >
+            Match History
+          </button>          
         </div>
 
         {activeTab === 'matches' && (
@@ -556,6 +563,16 @@ const AdminPanel = () => {
             supabaseKey={supabaseKey}
           />
         )}
+
+        {activeTab === 'history' && (
+          <div className="max-w-6xl mx-auto">
+            <MatchHistory 
+              players={players}
+              supabaseUrl={supabaseUrl}
+              supabaseKey={supabaseKey}
+            />
+          </div>
+        )}        
       </div>
     </div>
   );

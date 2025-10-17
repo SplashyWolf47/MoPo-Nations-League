@@ -27,7 +27,8 @@ const MatchEntryForm = ({
   const [selectedAwayPlayers, setSelectedAwayPlayers] = useState([]);
   const [homeGoalScorers, setHomeGoalScorers] = useState({});
   const [awayGoalScorers, setAwayGoalScorers] = useState({});
-
+  const [round, setRound] = useState('1');
+  
   const activePlayers = players.filter(p => p.active);
 
   const getAvailableCountries = () => {
@@ -463,6 +464,19 @@ const MatchEntryForm = ({
               placeholder="0"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Round / Matchday</label>
+          <input
+            type="number"
+            min="1"
+            value={round}
+            onChange={(e) => setRound(e.target.value)}
+            disabled={saving}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-center text-lg font-bold disabled:opacity-50"
+            placeholder="1"
+          />
         </div>
 
         <div>

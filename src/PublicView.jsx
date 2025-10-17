@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import LeagueTable from './components/LeagueTable';
 import TopScorers from './components/TopScorers';
+import MatchHistory from './components/MatchHistory';
 import { loadTeams, loadPlayers } from './utils/supabaseClient';
+
 
 const PublicView = () => {
   const supabaseUrl = 'https://drrkzqtqkzirtqokjxxx.supabase.co';
@@ -58,6 +60,11 @@ const PublicView = () => {
             supabaseUrl={supabaseUrl} 
             supabaseKey={supabaseKey} 
           />
+          <MatchHistory 
+            players={players}
+            supabaseUrl={supabaseUrl}
+            supabaseKey={supabaseKey}
+          />          
         </div>
       </div>
     </div>

@@ -207,6 +207,7 @@ const AdminPanel = () => {
   };
 
   const handleMatchSaved = async (matchData) => {
+    console.log('Match data received:', matchData); // For de-bugging own goals
     try {
       setSaving(true);
 
@@ -309,6 +310,7 @@ const AdminPanel = () => {
         }
 
         // Save own goals (player_id = null for own goals)
+        console.log('Saving own goals - home:', matchData.homeOwnGoals, 'away:', matchData.awayOwnGoals); // For debugging own goals
         if (matchData.homeOwnGoals > 0) {
           await createMatchGoal({
             match_id: matchId,

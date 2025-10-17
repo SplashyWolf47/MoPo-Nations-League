@@ -28,6 +28,8 @@ const MatchEntryForm = ({
   const [homeGoalScorers, setHomeGoalScorers] = useState({});
   const [awayGoalScorers, setAwayGoalScorers] = useState({});
   const [round, setRound] = useState('1');
+    const [homeOwnGoals, setHomeOwnGoals] = useState(0);
+  const [awayOwnGoals, setAwayOwnGoals] = useState(0);
   
   const activePlayers = players.filter(p => p.active);
 
@@ -186,17 +188,19 @@ const MatchEntryForm = ({
     const homeGoals = parseInt(homeScore);
     const awayGoals = parseInt(awayScore);
 
-    if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
-      const totalHomeGoals = Object.values(homeGoalScorers).reduce((sum, g) => sum + g, 0);
-      const totalAwayGoals = Object.values(awayGoalScorers).reduce((sum, g) => sum + g, 0);
+if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
+      const totalHomePlayerGoals = Object.values(homeGoalScorers).reduce((sum, g) => sum + g, 0);
+      const totalAwayPlayerGoals = Object.values(awayGoalScorers).reduce((sum, g) => sum + g, 0);
+      const totalHomeGoals = totalHomePlayerGoals + homeOwnGoals;
+      const totalAwayGoals = totalAwayPlayerGoals + awayOwnGoals;
 
       if (totalHomeGoals !== homeGoals) {
-        alert(`Home team goals don't match. Expected: ${homeGoals}, Assigned: ${totalHomeGoals}`);
+        alert(`Home team goals don't match. Expected: ${homeGoals}, Assigned: ${totalHomeGoals} (${totalHomePlayerGoals} player goals + ${homeOwnGoals} own goals)`);
         return;
       }
 
       if (totalAwayGoals !== awayGoals) {
-        alert(`Away team goals don't match. Expected: ${awayGoals}, Assigned: ${totalAwayGoals}`);
+        alert(`Away team goals don't match. Expected: ${awayGoals}, Assigned: ${totalAwayGoals} (${totalAwayPlayerGoals} player goals + ${awayOwnGoals} own goals)`);
         return;
       }
     }
@@ -288,6 +292,19 @@ const MatchEntryForm = ({
                 </div>
               </div>
             ))}
+            <div className="flex items-center justify-between mb-3 bg-white p-3 rounded-lg border-2 border-orange-300">
+              <span className="font-semibold text-orange-700">Own Goals</span>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Goals:</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={homeOwnGoals}
+                  onChange={(e) => setHomeOwnGoals(parseInt(e.target.value) || 0)}
+                  className="w-16 p-2 border-2 border-gray-300 rounded-lg text-center font-bold"
+                />
+              </div>
+            </div>            
           </div>
 
           <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
@@ -309,6 +326,19 @@ const MatchEntryForm = ({
                 </div>
               </div>
             ))}
+            <div className="flex items-center justify-between mb-3 bg-white p-3 rounded-lg border-2 border-orange-300">
+              <span className="font-semibold text-orange-700">Own Goals</span>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Goals:</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={homeOwnGoals}
+                  onChange={(e) => setAwayOwnGoals(parseInt(e.target.value) || 0)}
+                  className="w-16 p-2 border-2 border-gray-300 rounded-lg text-center font-bold"
+                />
+              </div>
+            </div>            
           </div>
         </div>
 

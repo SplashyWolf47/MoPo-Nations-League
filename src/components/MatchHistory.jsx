@@ -64,16 +64,29 @@ const MatchHistory = ({ players, supabaseUrl, supabaseKey }) => {
     if (goals.length === 0) return null;
 
     const scorerMap = {};
+    let ownGoals = 0;
+
     goals.forEach(goal => {
-      if (!scorerMap[goal.player_id]) {
-        scorerMap[goal.player_id] = 0;
+      if (goal.player_id === null) {
+        ownGoals += goal.goals_scored;
+      } else {
+        if (!scorerMap[goal.player_id]) {
+          scorerMap[goal.player_id] = 0;
+        }
+        scorerMap[goal.player_id] += goal.goals_scored;
       }
-      scorerMap[goal.player_id] += goal.goals_scored;
     });
 
-    return Object.entries(scorerMap)
+    const scorers = Object.entries(scorerMap)
       .map(([playerId, goals]) => `${getPlayerName(parseInt(playerId))} (${goals})`)
       .join(', ');
+
+    const ownGoalText = ownGoals > 0 ? `OG (${ownGoals})` : '';
+
+    if (scorers && ownGoalText) {
+      return `${scorers}, ${ownGoalText}`;
+    }
+    return scorers || ownGoalText || null;
   };
 
   const groupByRound = () => {

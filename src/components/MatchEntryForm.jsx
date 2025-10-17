@@ -338,7 +338,7 @@ if (matchStep === 2 && (homeGoals > 0 || awayGoals > 0)) {
                 <input
                   type="number"
                   min="0"
-                  value={homeOwnGoals}
+                  value={awayOwnGoals}
                   onChange={(e) => setAwayOwnGoals(parseInt(e.target.value) || 0)}
                   className="w-16 p-2 border-2 border-gray-300 rounded-lg text-center font-bold"
                 />

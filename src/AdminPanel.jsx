@@ -5,7 +5,7 @@ import LeagueTable from './components/LeagueTable';
 import PlayerManagement from './components/PlayerManagement';
 import CountryManagement from './components/CountryManagement';
 import TopScorers from './components/TopScorers';
-import MatchHistory from './components/MatchHistory';
+import AdminMatchHistory from './components/AdminMatchHistory';
 import { 
   loadTeams, 
   loadPlayers, 
@@ -584,8 +584,10 @@ const AdminPanel = () => {
 
         {activeTab === 'history' && (
           <div className="max-w-6xl mx-auto">
-            <MatchHistory 
+            <AdminMatchHistory 
               players={players}
+              teams={teams}
+              onMatchDeleted={loadData}
               supabaseUrl={supabaseUrl}
               supabaseKey={supabaseKey}
             />
